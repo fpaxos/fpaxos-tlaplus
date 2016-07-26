@@ -1,5 +1,5 @@
 -------------------------------- MODULE MCFPaxos -------------------------------
-EXTENDS Paxos, TLC
+EXTENDS FPaxos, TLC
 -----------------------------------------------------------------------------
 CONSTANTS a1, a2, a3, a4  \* acceptors
 CONSTANTS v1, v2      \* Values
