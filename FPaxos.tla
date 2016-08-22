@@ -1,8 +1,6 @@
 -------------------------------- MODULE FPaxos -------------------------------
 
 EXTENDS Integers
------------------------------------------------------------------------------
-
 CONSTANT Value, Acceptor, Quorum1, Quorum2
 
 ASSUME QuorumAssumption == /\ \A Q \in Quorum1 : Q \subseteq Acceptor
@@ -10,7 +8,6 @@ ASSUME QuorumAssumption == /\ \A Q \in Quorum1 : Q \subseteq Acceptor
                            /\ \A Q1 \in Quorum1 : \A Q2 \in Quorum2 : Q1 \cap Q2 # {}
 
 Ballot ==  Nat
-
 None == CHOOSE v : v \notin Ballot
 
 Message ==      [type : {"1a"}, bal : Ballot]
@@ -18,29 +15,24 @@ Message ==      [type : {"1a"}, bal : Ballot]
                  mbal : Ballot \cup {-1}, mval : Value \cup {None}]
            \cup [type : {"2a"}, bal : Ballot, val : Value]
            \cup [type : {"2b"}, acc : Acceptor, bal : Ballot, val : Value]
------------------------------------------------------------------------------
+
 VARIABLE maxBal,
-         maxVBal, \* <<maxVBal[a], maxVal[a]>> is the vote with the largest
-         maxVal,    \* ballot number cast by a; it equals <<-1, None>> if
-                    \* a has not cast any vote.
-         msgs     \* The set of all messages that have been sent.
-
-
+         maxVBal,
+         maxVal,
+         msgs
 
 vars == <<maxBal, maxVBal, maxVal, msgs>>
+Send(m) == msgs' = msgs \cup {m}
 
 TypeOK == /\ maxBal \in [Acceptor -> Ballot \cup {-1}]
           /\ maxVBal \in [Acceptor -> Ballot \cup {-1}]
           /\ maxVal \in [Acceptor -> Value \cup {None}]
           /\ msgs \subseteq Message
 
-
 Init == /\ maxBal = [a \in Acceptor |-> -1]
         /\ maxVBal = [a \in Acceptor |-> -1]
         /\ maxVal = [a \in Acceptor |-> None]
         /\ msgs = {}
-
-Send(m) == msgs' = msgs \cup {m}
 
 Phase1a(b) == /\ Send([type |-> "1a", bal |-> b])
               /\ UNCHANGED <<maxBal, maxVBal, maxVal>>
