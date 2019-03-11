@@ -2,7 +2,7 @@
 
 This repository contains the [TLA+](research.microsoft.com/en-us/um/people/lamport/tla/tla.html) specification and model checking setup for single valued Flexible Paxos.
 
-Instructions for installing and setting up TLA+ are available [elsewhere]([TLA+](http://research.microsoft.com/en-us/um/people/lamport/tla/tla.html). These instructions assume that you are running TLA+ from the command line using [tla-bin](https://github.com/pmer/tla-bin).
+Instructions for installing and setting up TLA+ are available [elsewhere](http://research.microsoft.com/en-us/um/people/lamport/tla/tla.html). These instructions assume that you are running TLA+ from the command line using [tla-bin](https://github.com/pmer/tla-bin).
 
 You can check this specification by cloning this directory and running:
 ```
