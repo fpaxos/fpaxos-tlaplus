@@ -135,74 +135,86 @@ SafeStates ==
     \A a \in Acceptor:
         /\ \/ maxBal[a] = -1
            \/ \E m \in msgs: m.bal = maxBal[a]
+        /\ maxBal[a] >= maxVBal[a]
+        /\ \A m \in msgs:
+            /\ m.type = "1b"
+            /\ m.acc = a
+            => /\ m.bal <= maxBal[a]
+               /\ m.mbal <= maxVBal[a]
+        /\ \A m \in msgs:
+            /\ m.type = "2b"
+            /\ m.acc = a
+            => /\ m.bal <= maxBal[a]
+               /\ m.bal <= maxVBal[a]
         /\ \/ (maxVBal[a] = -1 /\ maxVal[a] = -1)
            \/ \E m \in msgs:
                 /\ m.type = "2a"
                 /\ m.bal = maxVBal[a]
                 /\ m.val = maxVal[a]
 
-SafeMessage ==
+
+Safe1b ==
     \A m \in msgs:
-        /\ m.type = "1a"
-        \/ /\ m.type = "2b"
-           /\ \E a \in Acceptor:
+        m.type = "1b" => (
+            /\ \E a \in Acceptor:
                 /\ m.acc = a
-                /\ \/ /\ maxBal[a] \geq m.bal
-                      /\ maxVBal[a] = m.bal
-                      /\ maxVal[a] = m.val
-                   \/ /\ m.bal < maxBal[a]
-                      /\ \E m2 \in msgs:
+                /\ \/ /\ m.mbal = -1
+                      /\ m.mval = -1
+                   \/ \E m2 \in msgs:
                         /\ m2.type = "2a"
-                        /\ m2.bal > m.mbal
                         /\ m.mbal = m2.bal
                         /\ m.mval = m2.val
-            /\ \E m2 \in msgs:
-                /\ m2.type = "2a"
-                /\ m2.bal = m.bal
-                /\ m2.val = m.val
-        \/ /\ m.type = "1b"
-           /\ \E a \in Acceptor:
-                /\ m.acc = a
-                /\ \/ /\ m.bal = maxBal[a]
-                      /\ m.mbal = maxVBal[a]
-                      /\ m.mval = maxVal[a]
-                   \/ /\ m.bal < maxBal[a]
-                      /\ \E m2 \in msgs:
-                        /\ m2.type = "2a"
-                        /\ m2.bal > m.mbal
-                        /\ m.mbal = m2.bal
-                        /\ m.mval = m2.val
-           /\ \E m2 \in Message:
-                /\ m2.type = "2a"
-                /\ m2.bal = m.mbal
-                /\ m2.val = m.mval
-        \/ /\ m.type = "2a"
-           /\ \E Q \in Quorum1:
-                /\ \A a2 \in Q:
-                    \E m2 \in Message:
-                        /\ m2.type = "1b"
-                        /\ m2.acc = a2
-                        /\ m2.bal = m.bal
-                /\ \E a_max \in Q:
-                    \E bal_max \in Ballot:
-                        \E m_max \in Message:
+            /\ m.bal > m.mbal
+            /\ \A m2 \in msgs:
+                /\ m2.type = "1b"
+                /\ m2.mbal = m.mbal
+                => m2.mval = m.mval)
+
+Safe2a ==
+    \A m \in msgs:
+        m.type = "2a" => (
+            /\ \E Q \in Quorum1:
+                \E a_max \in Q:
+                    \E bal_max \in Ballot \cup {-1}:
+                        /\ \E m_max \in msgs:
                             /\ m_max.type = "1b"
                             /\ m_max.acc = a_max
                             /\ m_max.bal = m.bal
                             /\ m_max.mbal = bal_max
-                            /\ m_max.mval = m.mval
-                    /\ \A a2 \in Q:
-                        \E m2 \in Message:
-                            /\ m2.type = "1b"
-                            /\ m2.acc = a2
-                            /\ m2.bal = m.bal
-                            /\ bal_max \geq m2.mbal
+                            /\ \/ bal_max = -1
+                               \/ m_max.mval = m.val
+                        /\ \A a2 \in Q:
+                            \E m2 \in msgs:
+                                /\ m2.type = "1b"
+                                /\ m2.acc = a2
+                                /\ m2.bal = m.bal
+                                /\ bal_max \geq m2.mbal
+            /\ \A m2 \in msgs:
+                /\ m2.type = "2a"
+                /\ m2.bal = m.bal
+                => m2.val = m.val)
+
+Safe2b ==
+    \A m \in msgs:
+        m.type = "2b" =>
+        /\ \E a \in Acceptor:
+            /\ m.acc = a
+            /\ \/ /\ maxBal[a] \geq m.bal
+                  /\ maxVBal[a] = m.bal
+                  /\ maxVal[a] = m.val
+               \/ m.bal < maxBal[a]
+        /\ \E m2 \in msgs:
+            /\ m2.type = "2a"
+            /\ m2.bal = m.bal
+            /\ m2.val = m.val
 
 
 Inv ==
     /\ TypeOK
     /\ SafeStates
-    /\ SafeMessage
+    /\ Safe1b
+    /\ Safe2a
+    /\ Safe2b
     /\ SafeValue
     /\ Safety
 
