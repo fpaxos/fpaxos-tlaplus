@@ -24,3 +24,9 @@ jobs:
         run: sany MCFPaxos.tla
       - name: TLC
         run: tlc MCFPaxos.tla
+      - name: Apalache
+        run: |
+          sudo apt install default-jre
+          wget https://github.com/informalsystems/apalache/releases/download/v0.29.2/apalache.tgz
+          tar zxvf apalache.tgz
+          ./apalache/bin/apalache-mc typecheck MCFPaxos.tla
