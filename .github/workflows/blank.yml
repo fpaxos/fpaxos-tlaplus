@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install TLA+ Tools
+        run: |
+          git clone https://github.com/pmer/tla-bin.git
+          cd tla-bin
+          ./download_or_update_tla.sh
+          sudo ./install.sh
+          cd ..
+      - name: Sany
+        run: sany MCFPaxos.tla
+      - name: TLC
+        run: tlc MCFPaxos.tla
