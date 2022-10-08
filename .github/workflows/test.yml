@@ -29,4 +29,4 @@ jobs:
           sudo apt install default-jre
           wget https://github.com/informalsystems/apalache/releases/download/v0.29.2/apalache.tgz
           tar zxvf apalache.tgz
-          ./apalache/bin/apalache-mc typecheck --features=no-rows MCFPaxos.tla
+          ./apalache/bin/apalache-mc typecheck --features=no-rows MCFPaxosTwoAcc.tla
