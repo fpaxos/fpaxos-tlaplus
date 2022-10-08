@@ -24,10 +24,12 @@ jobs:
         run: |
           sany MCFPaxosTwoAcc.tla
           sany MCFPaxosThreeAcc.tla
+          sany MCFPaxosFourAcc.tla
       - name: TLC
         run: |
           tlc -config MCFPaxos.cfg MCFPaxosTwoAcc.tla
           tlc -config MCFPaxos.cfg MCFPaxosThreeAcc.tla
+          tlc -config MCFPaxos.cfg MCFPaxosFourAcc.tla
       - name: Apalache
         run: |
           sudo apt install default-jre
@@ -35,3 +37,4 @@ jobs:
           tar zxvf apalache.tgz
           ./apalache/bin/apalache-mc typecheck --features=no-rows MCFPaxosTwoAcc.tla
           ./apalache/bin/apalache-mc typecheck --features=no-rows MCFPaxosThreeAcc.tla
+          ./apalache/bin/apalache-mc typecheck --features=no-rows MCFPaxosFourAcc.tla
