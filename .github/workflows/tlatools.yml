@@ -25,8 +25,8 @@ jobs:
           sany MCFPaxosThreeAcc.tla
           sany MCFPaxosFourAcc.tla
       - name: TLC - 2 Acceptors
-        run: tlc -config MCFPaxos.cfg MCFPaxosTwoAcc.tla
+        run: tlc -config MCFPaxos.cfg -workers auto MCFPaxosTwoAcc.tla
       - name: TLC - 3 Acceptors
-        run: tlc -config MCFPaxos.cfg MCFPaxosThreeAcc.tla
+        run: tlc -config MCFPaxos.cfg -workers auto MCFPaxosThreeAcc.tla
       - name: TLC - 4 Acceptors
-        run: tlc -config MCFPaxos.cfg MCFPaxosFourAcc.tla
+        run: tlc -config MCFPaxos.cfg -workers auto MCFPaxosFourAcc.tla
