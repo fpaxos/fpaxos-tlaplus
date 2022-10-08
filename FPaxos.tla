@@ -160,6 +160,16 @@ Safe1b ==
                 /\ m.acc = a
                 /\ \/ /\ m.mbal = -1
                       /\ m.mval = -1
+                      \* acceptor $a$ never accepted a proposal in a smaller ballot
+                      /\ ~ \E m2 \in msgs:
+                        /\ m2.acc = a
+                        /\ m2.type = "2b"
+                        /\ m2.bal < m.bal
+                      /\ \A m2 \in msgs:
+                        /\ m2.acc = a
+                        /\ m2.type = "1b"
+                        /\ m2.bal < m.bal
+                        => m2.mbal = -1 /\ m2.mval = -1
                    \/ \E m2 \in msgs:
                         /\ m2.type = "2a"
                         /\ m.mbal = m2.bal
