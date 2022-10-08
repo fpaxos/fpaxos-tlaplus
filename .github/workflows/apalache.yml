@@ -19,7 +19,7 @@ jobs:
           java-version: '17'
       - name: Setup
         run: |
-          wget https://github.com/informalsystems/apalache/releases/download/v0.29.2/apalache.tgz
+          wget https://github.com/informalsystems/apalache/releases/latest/download/apalache.tgz
           tar zxvf apalache.tgz
       - name: Typecheck
         run: |
