@@ -1,4 +1,4 @@
-name: CI
+name: Model Checking
 
 on:
   push:
@@ -21,12 +21,17 @@ jobs:
           sudo ./install.sh
           cd ..
       - name: Sany
-        run: sany MCFPaxosTwoAcc.tla
+        run: |
+          sany MCFPaxosTwoAcc.tla
+          sany MCFPaxosThreeAcc.tla
       - name: TLC
-        run: tlc -config MCFPaxos.cfg MCFPaxosTwoAcc.tla
+        run: |
+          tlc -config MCFPaxos.cfg MCFPaxosTwoAcc.tla
+          tlc -config MCFPaxos.cfg MCFPaxosThreeAcc.tla
       - name: Apalache
         run: |
           sudo apt install default-jre
           wget https://github.com/informalsystems/apalache/releases/download/v0.29.2/apalache.tgz
           tar zxvf apalache.tgz
           ./apalache/bin/apalache-mc typecheck --features=no-rows MCFPaxosTwoAcc.tla
+          ./apalache/bin/apalache-mc typecheck --features=no-rows MCFPaxosThreeAcc.tla
