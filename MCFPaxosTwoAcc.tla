@@ -1,4 +1,4 @@
----- MODULE MCFPaxos ----
+---- MODULE MCFPaxosTwoAcc ----
 
 EXTENDS FPaxos, TLC
 

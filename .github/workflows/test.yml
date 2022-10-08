@@ -21,9 +21,9 @@ jobs:
           sudo ./install.sh
           cd ..
       - name: Sany
-        run: sany MCFPaxos.tla
+        run: sany MCFPaxosTwoAcc.tla
       - name: TLC
-        run: tlc MCFPaxos.tla
+        run: tlc -config MCFPaxos.cfg MCFPaxosTwoAcc.tla
       - name: Apalache
         run: |
           sudo apt install default-jre

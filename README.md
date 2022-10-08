@@ -6,7 +6,7 @@ Instructions for installing and setting up TLA+ are available [elsewhere](http:/
 
 You can model check this specification by cloning this directory and running:
 ```
-tlc MCFPaxos.tla
+$ tlc -config MCFPaxos.cfg MCFPaxosTwoAcc.tla
 ```
 
 By editing [MCFPaxos.tla](MCFPaxos.tla), you can modify the configuration to test different models. For example, you might wish to try changing the number of acceptors, how quorums are composed or the number of ballots.
