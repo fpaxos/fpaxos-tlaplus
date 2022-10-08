@@ -1,4 +1,4 @@
-name: Model Checking
+name: TLA+ Tools
 
 on:
   push:
@@ -30,11 +30,3 @@ jobs:
           tlc -config MCFPaxos.cfg MCFPaxosTwoAcc.tla
           tlc -config MCFPaxos.cfg MCFPaxosThreeAcc.tla
           tlc -config MCFPaxos.cfg MCFPaxosFourAcc.tla
-      - name: Apalache
-        run: |
-          sudo apt install default-jre
-          wget https://github.com/informalsystems/apalache/releases/download/v0.29.2/apalache.tgz
-          tar zxvf apalache.tgz
-          ./apalache/bin/apalache-mc typecheck --features=no-rows MCFPaxosTwoAcc.tla
-          ./apalache/bin/apalache-mc typecheck --features=no-rows MCFPaxosThreeAcc.tla
-          ./apalache/bin/apalache-mc typecheck --features=no-rows MCFPaxosFourAcc.tla
