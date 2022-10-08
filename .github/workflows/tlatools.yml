@@ -19,7 +19,6 @@ jobs:
           cd tla-bin
           ./download_or_update_tla.sh
           sudo ./install.sh
-          cd ..
       - name: Sany (All)
         run: |
           sany MCFPaxosTwoAcc.tla
