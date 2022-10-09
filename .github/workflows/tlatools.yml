@@ -18,14 +18,10 @@ jobs:
           cd tla-bin
           ./download_or_update_tla.sh
           sudo ./install.sh
-      - name: Sany (All)
+      - name: Sany
         run: git ls-files | grep -F ".tla" | xargs sany
-      - name: TLC - 2 Acceptors
-        run: tlc -config MCFPaxos.cfg -workers auto MCFPaxosTwoAcc.tla
-      - name: TLC - 3 Acceptors
-        run: tlc -config MCFPaxos.cfg -workers auto MCFPaxosThreeAcc.tla
-      - name: TLC - 4 Acceptors
-        run: tlc -config MCFPaxos.cfg -workers auto MCFPaxosFourAcc.tla
+      - name: TLC
+        run: git ls-files | grep 'MC.*\.tla' | xargs tlc -config MCFPaxos.cfg -workers auto
       - name: Install LaTeX
         run: sudo apt install texlive-latex-recommended
       - name: TLA+ pretty printer
@@ -35,5 +31,5 @@ jobs:
       - name: Upload PDF file
         uses: actions/upload-artifact@v3
         with:
-          name: PDF
+          name: Pretty Printed TLA+ Specification
           path: FPaxos.pdf
