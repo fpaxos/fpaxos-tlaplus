@@ -10,7 +10,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v3
       - name: Install TLA+ Tools
@@ -30,13 +29,11 @@ jobs:
       - name: Install LaTeX
         run: sudo apt install texlive-latex-recommended
       - name: TLA+ pretty printer
-        run: tlatex FPaxos.tla
-      - name: Compile LaTeX
-        uses: xu-cheng/latex-action@v2
-        with:
-          root_file: FPaxos.tex
+        run: |
+          git ls-files | grep -F ".tla" | xargs tlatex
+          ls | grep -F ".tex" | xargs pdflatex
       - name: Upload PDF file
         uses: actions/upload-artifact@v3
         with:
           name: PDF
-          path: FPaxos.pdf
+          path: *.pdf
