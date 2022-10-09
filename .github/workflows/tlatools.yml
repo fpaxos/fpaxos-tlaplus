@@ -30,3 +30,14 @@ jobs:
         run: tlc -config MCFPaxos.cfg -workers auto MCFPaxosThreeAcc.tla
       - name: TLC - 4 Acceptors
         run: tlc -config MCFPaxos.cfg -workers auto MCFPaxosFourAcc.tla
+      - name: TLA+ pretty printer
+        run: tlatex FPaxos.tla
+      - name: Compile LaTeX
+        uses: xu-cheng/latex-action@v2
+        with:
+          root_file: FPaxos.tex
+      - name: Upload PDF file
+        uses: actions/upload-artifact@v3
+        with:
+          name: PDF
+          path: FPaxos.pdf
