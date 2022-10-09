@@ -20,10 +20,7 @@ jobs:
           ./download_or_update_tla.sh
           sudo ./install.sh
       - name: Sany (All)
-        run: |
-          sany MCFPaxosTwoAcc.tla
-          sany MCFPaxosThreeAcc.tla
-          sany MCFPaxosFourAcc.tla
+        run: git ls-files | grep -F ".tla" | xargs sany
       - name: TLC - 2 Acceptors
         run: tlc -config MCFPaxos.cfg -workers auto MCFPaxosTwoAcc.tla
       - name: TLC - 3 Acceptors
