@@ -30,8 +30,8 @@ jobs:
         run: sudo apt install texlive-latex-recommended
       - name: TLA+ pretty printer
         run: |
-          git ls-files | grep -F ".tla" | xargs tlatex
-          ls | grep -F ".tex" | xargs pdflatex
+          tlatex FPaxos.tla
+          pdflatex FPaxos.tex
       - name: Upload PDF file
         uses: actions/upload-artifact@v3
         with:
