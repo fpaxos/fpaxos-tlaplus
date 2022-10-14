@@ -19,11 +19,10 @@ ASSUME QuorumAssumption ==
     /\ \A Q \in Quorum2 : Q \subseteq Acceptor
     /\ \A Q1 \in Quorum1 : \A Q2 \in Quorum2 : Q1 \cap Q2 # {}
 
-Message ==      [type : {"1a"}, bal : Ballot]
-           \cup [type : {"1b"}, acc : Acceptor, bal : Ballot,
-                 mbal : Ballot \cup {-1}, mval : Value \cup {-1}]
-           \cup [type : {"2a"}, bal : Ballot, val : Value]
-           \cup [type : {"2b"}, acc : Acceptor, bal : Ballot, val : Value]
+Messages1A == [bal : Ballot]
+Messages1B == [acc : Acceptor, bal : Ballot, mbal : Ballot \cup {-1}, mval : Value \cup {-1}]
+Messages2A == [bal : Ballot, val : Value]
+Messages2B == [acc : Acceptor, bal : Ballot, val : Value]
 
 VARIABLE
     \* @type: Str -> Int;
@@ -32,60 +31,69 @@ VARIABLE
     maxVBal,
     \* @type: Str -> Int;
     maxVal,
-    \* @type: Set([type: Str, bal: Int, mbal: Int, acc: Str, val: Int, mval: Int]);
-    msgs
+    \* @type: Set({bal: Int});
+    msgs1a,
+    \* @type: Set({bal: Int, mbal: Int, acc: Str, mval: Int});
+    msgs1b,
+    \* @type: Set({bal: Int, val: Int});
+    msgs2a,
+    \* @type: Set({bal: Int, acc: Str, val: Int});
+    msgs2b
 
+msgs == <<msgs1a, msgs1b, msgs2a, msgs2b>>
 vars == <<maxBal, maxVBal, maxVal, msgs>>
-Send(m) == msgs' = msgs \cup {m}
 
 TypeOK ==
     /\ maxBal \in [Acceptor -> Ballot \cup {-1}]
     /\ maxVBal \in [Acceptor -> Ballot \cup {-1}]
     /\ maxVal \in [Acceptor -> Value \cup {-1}]
-    /\ msgs \in SUBSET Message
+    /\ msgs1a \in SUBSET Messages1A
+    /\ msgs1b \in SUBSET Messages1B
+    /\ msgs2a \in SUBSET Messages2A
+    /\ msgs2b \in SUBSET Messages2B
 
 Init ==
     /\ maxBal = [a \in Acceptor |-> -1]
     /\ maxVBal = [a \in Acceptor |-> -1]
     /\ maxVal = [a \in Acceptor |-> -1]
-    /\ msgs = {}
+    /\ msgs1a = {}
+    /\ msgs1b = {}
+    /\ msgs2a = {}
+    /\ msgs2b = {}
 
 Phase1a(b) ==
-    /\ Send([type |-> "1a", bal |-> b])
-    /\ UNCHANGED <<maxBal, maxVBal, maxVal>>
+    /\ msgs1a' = msgs1a \union {[bal |-> b]}
+    /\ UNCHANGED <<maxBal, maxVBal, maxVal, msgs1b, msgs2a, msgs2b>>
 
 Phase1b(a) ==
-    /\ \E m \in msgs :
-        /\ m.type = "1a"
+    /\ \E m \in msgs1a :
         /\ m.bal > maxBal[a]
         /\ maxBal' = [maxBal EXCEPT ![a] = m.bal]
-        /\ Send([type |-> "1b", acc |-> a, bal |-> m.bal,
-                            mbal |-> maxVBal[a], mval |-> maxVal[a]])
-    /\ UNCHANGED <<maxVBal, maxVal>>
+        /\ msgs1b' = msgs1b \union {[acc |-> a, bal |-> m.bal, mbal |-> maxVBal[a], mval |-> maxVal[a]]}
+    /\ UNCHANGED <<maxVBal, maxVal, msgs1a, msgs2a, msgs2b>>
 
 Phase2a(b, v) ==
-  /\ ~ \E m \in msgs : m.type = "2a" /\ m.bal = b
+  /\ ~ \E m \in msgs2a : m.bal = b
   /\ \E Q \in Quorum1 :
-        LET Q1b == {m \in msgs : /\ m.type = "1b"
-                                 /\ m.acc \in Q
-                                 /\ m.bal = b}
+        LET Q1b == {m \in msgs1b : /\ m.acc \in Q
+                                   /\ m.bal = b}
             Q1bv == {m \in Q1b : m.mbal \geq 0}
         IN  /\ \A a \in Q : \E m \in Q1b : m.acc = a
             /\ \/ Q1bv = {}
                \/ \E m \in Q1bv :
                     /\ m.mval = v
                     /\ \A mm \in Q1bv : m.mbal \geq mm.mbal
-  /\ Send([type |-> "2a", bal |-> b, val |-> v])
-  /\ UNCHANGED <<maxBal, maxVBal, maxVal>>
+  /\ msgs2a' = msgs2a \union {[bal |-> b, val |-> v]}
+  /\ UNCHANGED <<maxBal, maxVBal, maxVal, msgs1a, msgs1b, msgs2b>>
 
 Phase2b(a) ==
-    \E m \in msgs : /\ m.type = "2a"
+    /\ \E m \in msgs2a :
         /\ m.bal \geq maxBal[a]
         /\ maxBal' = [maxBal EXCEPT ![a] = m.bal]
         /\ maxVBal' = [maxVBal EXCEPT ![a] = m.bal]
         /\ maxVal' = [maxVal EXCEPT ![a] = m.val]
-        /\ Send([type |-> "2b", acc |-> a,
-                bal |-> m.bal, val |-> m.val])
+        /\ msgs2b' = msgs2b \union {[acc |-> a, bal |-> m.bal, val |-> m.val]}
+    /\ UNCHANGED <<msgs1a, msgs1b, msgs2a>>
 
 Next ==
     \/ \E b \in Ballot : \/ Phase1a(b)
@@ -95,15 +103,15 @@ Next ==
 Spec == Init /\ [][Next]_vars
 
 Sent2b(a,v,b) ==
-    \E m \in msgs: /\ m.type = "2b"
-                   /\ m.acc = a
-                   /\ m.val = v
-                   /\ m.bal = b
+    \E m \in msgs2b:
+        /\ m.acc = a
+        /\ m.val = v
+        /\ m.bal = b
 
 Sent2a(v,b) ==
-    \E m \in msgs: /\ m.type = "2a"
-                   /\ m.val = v
-                   /\ m.bal = b
+    \E m \in msgs2a:
+        /\ m.val = v
+        /\ m.bal = b
 
 Agreed(v,b) ==
     \E Q \in Quorum2:
@@ -134,87 +142,74 @@ OneVotePerAcceptorPerBallot ==
 SafeStates ==
     \A a \in Acceptor:
         /\ \/ maxBal[a] = -1
-           \/ \E m \in msgs: m.bal = maxBal[a]
+           \/ \E m \in msgs1a: m.bal = maxBal[a]
+           \/ \E m \in msgs2a: m.bal = maxBal[a]
         /\ maxBal[a] >= maxVBal[a]
-        /\ \A m \in msgs:
-            /\ m.type = "1b"
+        /\ \A m \in msgs1b:
             /\ m.acc = a
             => /\ m.bal <= maxBal[a]
                /\ m.mbal <= maxVBal[a]
-        /\ \A m \in msgs:
-            /\ m.type = "2b"
+        /\ \A m \in msgs2b:
             /\ m.acc = a
             => /\ m.bal <= maxBal[a]
                /\ m.bal <= maxVBal[a]
         /\ \/ (maxVBal[a] = -1 /\ maxVal[a] = -1)
-           \/ \E m \in msgs:
-                /\ m.type = "2a"
+           \/ \E m \in msgs2a:
                 /\ m.bal = maxVBal[a]
                 /\ m.val = maxVal[a]
 
 
 Safe1b ==
-    \A m \in msgs:
-        m.type = "1b" => (
+    \A m \in msgs1b:
             /\ \E a \in Acceptor:
                 /\ m.acc = a
                 /\ \/ /\ m.mbal = -1
                       /\ m.mval = -1
                       \* acceptor $a$ never accepted a proposal in a smaller ballot
-                      /\ ~ \E m2 \in msgs:
+                      /\ ~ \E m2 \in msgs2b:
                         /\ m2.acc = a
-                        /\ m2.type = "2b"
                         /\ m2.bal < m.bal
-                      /\ \A m2 \in msgs:
+                      /\ \A m2 \in msgs1b:
                         /\ m2.acc = a
-                        /\ m2.type = "1b"
                         /\ m2.bal < m.bal
                         => m2.mbal = -1 /\ m2.mval = -1
-                   \/ \E m2 \in msgs:
-                        /\ m2.type = "2a"
+                   \/ \E m2 \in msgs2a:
                         /\ m.mbal = m2.bal
                         /\ m.mval = m2.val
             /\ m.bal > m.mbal
-            /\ \A m2 \in msgs:
-                /\ m2.type = "1b"
+            /\ \A m2 \in msgs1b:
                 /\ m2.mbal = m.mbal
-                => m2.mval = m.mval)
+                => m2.mval = m.mval
 
 Safe2a ==
-    \A m \in msgs:
-        m.type = "2a" => (
-            /\ \E Q \in Quorum1:
-                \E a_max \in Q:
-                    \E bal_max \in Ballot \cup {-1}:
-                        /\ \E m_max \in msgs:
-                            /\ m_max.type = "1b"
-                            /\ m_max.acc = a_max
-                            /\ m_max.bal = m.bal
-                            /\ m_max.mbal = bal_max
-                            /\ \/ bal_max = -1
-                               \/ m_max.mval = m.val
-                        /\ \A a2 \in Q:
-                            \E m2 \in msgs:
-                                /\ m2.type = "1b"
-                                /\ m2.acc = a2
-                                /\ m2.bal = m.bal
-                                /\ bal_max \geq m2.mbal
-            /\ \A m2 \in msgs:
-                /\ m2.type = "2a"
-                /\ m2.bal = m.bal
-                => m2.val = m.val)
+    \A m \in msgs2a:
+        /\ \E Q \in Quorum1:
+            \E a_max \in Q:
+                \E bal_max \in Ballot \cup {-1}:
+                    /\ \E m_max \in msgs1b:
+                        /\ m_max.acc = a_max
+                        /\ m_max.bal = m.bal
+                        /\ m_max.mbal = bal_max
+                        /\ \/ bal_max = -1
+                            \/ m_max.mval = m.val
+                    /\ \A a2 \in Q:
+                        \E m2 \in msgs1b:
+                            /\ m2.acc = a2
+                            /\ m2.bal = m.bal
+                            /\ bal_max \geq m2.mbal
+        /\ \A m2 \in msgs2a:
+            /\ m2.bal = m.bal
+            => m2.val = m.val
 
 Safe2b ==
-    \A m \in msgs:
-        m.type = "2b" =>
+    \A m \in msgs2b:
         /\ \E a \in Acceptor:
             /\ m.acc = a
             /\ \/ /\ maxBal[a] \geq m.bal
                   /\ maxVBal[a] = m.bal
                   /\ maxVal[a] = m.val
                \/ m.bal < maxBal[a]
-        /\ \E m2 \in msgs:
-            /\ m2.type = "2a"
+        /\ \E m2 \in msgs2a:
             /\ m2.bal = m.bal
             /\ m2.val = m.val
 

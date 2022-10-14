@@ -23,6 +23,6 @@ jobs:
           tar zxvf apalache.tgz
       - name: Typecheck
         run: |
-          ./apalache/bin/apalache-mc typecheck --features=no-rows MCFPaxosTwoAcc.tla
-          ./apalache/bin/apalache-mc typecheck --features=no-rows MCFPaxosThreeAcc.tla
-          ./apalache/bin/apalache-mc typecheck --features=no-rows MCFPaxosFourAcc.tla
+          ./apalache/bin/apalache-mc typecheck MCFPaxosTwoAcc.tla
+          ./apalache/bin/apalache-mc typecheck MCFPaxosThreeAcc.tla
+          ./apalache/bin/apalache-mc typecheck MCFPaxosFourAcc.tla
