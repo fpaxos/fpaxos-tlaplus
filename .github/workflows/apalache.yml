@@ -26,3 +26,8 @@ jobs:
           ./apalache/bin/apalache-mc typecheck MCFPaxosTwoAcc.tla
           ./apalache/bin/apalache-mc typecheck MCFPaxosThreeAcc.tla
           ./apalache/bin/apalache-mc typecheck MCFPaxosFourAcc.tla
+      - name: Check
+        run: |
+          ./apalache/bin/apalache-mc check --config=MCFPaxos.cfg MCFPaxosTwoAcc.tla
+          ./apalache/bin/apalache-mc check --config=MCFPaxos.cfg MCFPaxosThreeAcc.tla
+          ./apalache/bin/apalache-mc check --config=MCFPaxos.cfg MCFPaxosFourAcc.tla
