@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+title: TLA+ Specification of Flexible Paxos
+message: >-
+  If you use this specification, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Heidi
+    family-names: Howard
+repository-code: 'https://github.com/fpaxos/fpaxos-tlaplus'
+license: MIT
+preferred-citation:
+  type: conference-paper
+  authors:
+  - family-names: Howard
+    given-names: Heidi
+  - family-names: Malkhi
+    given-names: Dahlia
+  - family-names: Spiegelman
+    given-names: Alexander
+  doi: "10.4230/LIPIcs.OPODIS.2016.25"
+  journal: "20th International Conference on Principles of Distributed Systems (OPODIS 2016)"
+  month: 9
+  title: "Flexible Paxos: Quorum Intersection Revisited"
+  volume: 70
+  year: 2017
