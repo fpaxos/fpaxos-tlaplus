@@ -19,7 +19,8 @@ preferred-citation:
   - family-names: Spiegelman
     given-names: Alexander
   doi: "10.4230/LIPIcs.OPODIS.2016.25"
-  conference: "20th International Conference on Principles of Distributed Systems (OPODIS 2016)"
+  conference:
+    name: "20th International Conference on Principles of Distributed Systems (OPODIS 2016)"
   month: 9
   title: "Flexible Paxos: Quorum Intersection Revisited"
   volume: 70
