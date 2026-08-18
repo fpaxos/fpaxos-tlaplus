@@ -11,7 +11,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install TLA+ Tools
         run: |
           git clone https://github.com/pmer/tla-bin.git
@@ -35,7 +35,7 @@ jobs:
           tlatex FPaxos.tla
           pdflatex FPaxos.tex
       - name: Upload PDF file
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: Pretty Printed TLA+ Specification
           path: FPaxos.pdf
