@@ -125,6 +125,4 @@ SafeValue ==
 
 Safety == Cardinality({ v \in Value: Decided(v) }) \leq 1
 
-\* Below is my first attempt at a inductive invariant. Not currently working
-
 ====
