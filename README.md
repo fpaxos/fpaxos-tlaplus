@@ -37,13 +37,11 @@ proof of agreement also assumes that the phase-one quorum family is nonempty.
 Lean's types enforce the `TypeOK` conditions by construction.
 
 The proof covers the two inductive invariants declared in the Veil module and
-the literal TLA+ `Safety` definition. The larger invariant block after
-`Safety` in `FPaxos.tla` is explicitly marked there as a non-working draft;
-in particular, this translation does not claim a proof of that draft's
-`SafeValue` strengthening. The direct proof model is kept separate from
-Veil's generated state representation so that its action cases remain
-readable; the two action encodings are checked by compilation but their
-correspondence is not itself a Lean theorem.
+the literal TLA+ `Safety` definition. It does not claim a proof of the stronger
+TLA+ `SafeValue` property. The direct proof model is kept separate from Veil's
+generated state representation so that its action cases remain readable; the
+two action encodings are checked by compilation but their correspondence is
+not itself a Lean theorem.
 
 Veil and its Lean toolchain are pinned by the files in the `lean` directory.
 The Veil build requires Node.js and `npm` for its editor widget. Build both the
