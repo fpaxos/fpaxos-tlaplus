@@ -16,7 +16,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: 'microsoft'
-          java-version: '17'
+          java-version: '21'
       - name: Setup
         run: |
           wget https://github.com/informalsystems/apalache/releases/latest/download/apalache.tgz
