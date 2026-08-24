@@ -15,40 +15,37 @@ This TLA+ specification is derived from [Leslie Lamport's](http://www.lamport.or
 
 ## The specification in Lean
 
-The [`lean`](lean) directory contains a translation of [`FPaxos.tla`](FPaxos.tla)
-to Lean 4 using the [Veil](https://github.com/verse-lab/veil) transition-system
-DSL:
+The [`lean`](lean) directory contains a pure Lean 4 translation of
+[`FPaxos.tla`](FPaxos.tla). [`lean/FPaxos.lean`](lean/FPaxos.lean) defines the
+state, initial-state predicate, and the four protocol actions as an inductive
+transition relation. TLA+ message sets are represented as predicates, while
+the `-1` sentinel for an acceptor with no promise or vote is represented by
+`Option.none`.
 
-* [`lean/FPaxos.lean`](lean/FPaxos.lean) contains the Veil specification.
-  TLA+ message sets are represented as relations, and the `-1` sentinel used
-  for an acceptor with no promise or vote is represented by the
-  `hasPromised` and `hasVoted` relations.
-* [`lean/FPaxosProof.lean`](lean/FPaxosProof.lean) gives a corresponding
-  mathematical transition relation and direct Lean proofs that proposal
-  uniqueness and vote provenance hold initially and are preserved by every
-  action. A reachability induction applies those preservation results to every
-  protocol execution. The proof then derives one vote and one agreed value per
-  ballot, followed by a `reachable_safety` theorem for every reachable state.
-  These proofs do not call Veil's SMT-based `#check_invariants`.
+[`lean/Proof.lean`](lean/Proof.lean) proves proposal uniqueness, vote
+provenance, and the protocol's required promise/history facts initially and
+after every action. Phase-two proposals carry finite recursive phase-one
+certificates. Together with quorum intersection, these certificates prove the
+literal TLA+ `SafeValue` property even when a lower ballot becomes agreed
+after a higher proposal already exists. A reachability induction yields
+`reachable_safeValue` and `reachable_safety` for every reachable state. The
+development uses no SMT solver or external proof framework.
 
 The abstract Lean model preserves the TLA+ quorum assumption: every phase-one
 quorum intersects every phase-two quorum. As in the concrete TLC models, the
 proof of agreement also assumes that the phase-one quorum family is nonempty.
-Lean's types enforce the `TypeOK` conditions by construction.
+Lean's types encode a well-typed refinement of `TypeOK` by construction; in
+particular, an accepted ballot and its value are present or absent together.
+Ballots carry a reflexive, transitive, antisymmetric, total order, matching
+their integer ordering in TLA+.
 
-The proof covers the two inductive invariants declared in the Veil module and
-the literal TLA+ `Safety` definition. It does not claim a proof of the stronger
-TLA+ `SafeValue` property. The direct proof model is kept separate from Veil's
-generated state representation so that its action cases remain readable; the
-two action encodings are checked by compilation but their correspondence is
-not itself a Lean theorem.
+The proof covers the literal TLA+ `NoFutureProposal`, `SafeValue`, and
+`Safety` definitions.
 
-Veil and its Lean toolchain are pinned by the files in the `lean` directory.
-The Veil build requires Node.js and `npm` for its editor widget. Build both the
-DSL specification and the direct proofs with:
+The Lean toolchain is pinned in the `lean` directory. Build the specification
+and proofs with:
 
 ```sh
 cd lean
-lake update
 lake build
 ```
