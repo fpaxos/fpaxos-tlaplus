@@ -5,4 +5,4 @@ package fpaxos where
 
 @[default_target]
 lean_lib FPaxos where
-  roots := #[`FPaxos, `Proof]
+  roots := #[`FPaxos, `Fpaxos, `Proof]
