@@ -1,0 +1,17 @@
+{
+  "name": "FPaxos Lean Development",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "leanprover.lean4"
+      ]
+    }
+  },
+  "postCreateCommand": "cd lean && lake build",
+  "remoteUser": "vscode"
+}
+
