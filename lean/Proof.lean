@@ -9,32 +9,32 @@ variable {Quorum1 : Type uQ1} {Quorum2 : Type uQ2}
 variable [DecidableEq Acceptor]
 
 def ProposalUnique (s : State Acceptor Value) : Prop :=
-  ∀ b v₁ v₂, s.twoA b v₁ → s.twoA b v₂ → v₁ = v₂
+  ∀ b v₁ v₂, s.messages.twoA b v₁ → s.messages.twoA b v₂ → v₁ = v₂
 
 def VoteHasProposal (s : State Acceptor Value) : Prop :=
-  ∀ a b v, s.twoB a b v → s.twoA b v
+  ∀ a b v, s.messages.twoB a b v → s.messages.twoA b v
 
 def MaxBalCoversOneB (s : State Acceptor Value) : Prop :=
-  ∀ a b prior, s.oneB a b prior →
+  ∀ a b prior, s.messages.oneB a b prior →
     ∃ current, s.maxBal a = some current ∧ b ≤ current
 
 def AcceptedCoversVotes (s : State Acceptor Value) : Prop :=
-  ∀ a b v, s.twoB a b v →
+  ∀ a b v, s.messages.twoB a b v →
     ∃ current value, s.accepted a = some (current, value) ∧ b ≤ current
 
 def AcceptedHasVote (s : State Acceptor Value) : Prop :=
-  ∀ a b v, s.accepted a = some (b, v) → s.twoB a b v
+  ∀ a b v, s.accepted a = some (b, v) → s.messages.twoB a b v
 
 def AcceptedBelowMaxBal (s : State Acceptor Value) : Prop :=
   ∀ a b v, s.accepted a = some (b, v) →
     ∃ current, s.maxBal a = some current ∧ b ≤ current
 
 def OneBHasVote (s : State Acceptor Value) : Prop :=
-  ∀ a b previous v, s.oneB a b (some (previous, v)) →
-    s.twoB a previous v
+  ∀ a b previous v, s.messages.oneB a b (some (previous, v)) →
+    s.messages.twoB a previous v
 
 def OneBPreviousBelow (s : State Acceptor Value) : Prop :=
-  ∀ a b previous v, s.oneB a b (some (previous, v)) →
+  ∀ a b previous v, s.messages.oneB a b (some (previous, v)) →
     previous < b
 
 /--
@@ -42,10 +42,11 @@ A phase-one response remembers enough of the acceptor's history to account for
 every lower vote, including votes inspected after the response was sent.
 -/
 def OneBCoversLowerVotes (s : State Acceptor Value) : Prop :=
-  ∀ a b prior voted value, s.oneB a b prior → s.twoB a voted value →
-    voted < b →
-    ∃ previous previousValue,
-      prior = some (previous, previousValue) ∧ voted ≤ previous
+  ∀ a b prior voted value,
+    s.messages.oneB a b prior → s.messages.twoB a voted value →
+      voted < b →
+      ∃ previous previousValue,
+        prior = some (previous, previousValue) ∧ voted ≤ previous
 
 /--
 A finite phase-one certificate for a proposal. The recursive parent records
@@ -56,15 +57,15 @@ inductive ProposalCertificate
     (quorum1Member : Quorum1 → Acceptor → Prop)
     (s : State Acceptor Value) : Ballot → Value → Prop
   | noPrevious (b v : _) (q : Quorum1)
-      (responses : ∀ a, quorum1Member q a → s.oneB a b none) :
+      (responses : ∀ a, quorum1Member q a → s.messages.oneB a b none) :
       ProposalCertificate quorum1Member s b v
   | selected (b v previous : _) (q : Quorum1)
       (report : Acceptor → Option (Ballot × Value) → Prop)
       (responses : ∀ a, quorum1Member q a →
-        ∃ prior, report a prior ∧ s.oneB a b prior)
+        ∃ prior, report a prior ∧ s.messages.oneB a b prior)
       (chosen : ∃ a, quorum1Member q a ∧
         report a (some (previous, v)) ∧
-        s.oneB a b (some (previous, v)))
+        s.messages.oneB a b (some (previous, v)))
       (greatest : ∀ a previous' v', quorum1Member q a →
         report a (some (previous', v')) → previous' ≤ previous)
       (previousBelow : previous < b)
@@ -84,11 +85,12 @@ structure Invariants
   oneBHasVote : OneBHasVote s
   oneBPreviousBelow : OneBPreviousBelow s
   oneBCoversLowerVotes : OneBCoversLowerVotes s
-  proposalCertified : ∀ b v, s.twoA b v →
+  proposalCertified : ∀ b v, s.messages.twoA b v →
     ProposalCertificate quorum1Member s b v
 
 def OneVotePerAcceptorPerBallot (s : State Acceptor Value) : Prop :=
-  ∀ a b v₁ v₂, s.twoB a b v₁ → s.twoB a b v₂ → v₁ = v₂
+  ∀ a b v₁ v₂,
+    s.messages.twoB a b v₁ → s.messages.twoB a b v₂ → v₁ = v₂
 
 def OneValueAgreedPerBallot
     (quorum2Member : Quorum2 → Acceptor → Prop)
@@ -198,7 +200,8 @@ omit [DecidableEq Acceptor] in
 private theorem certificate_mono
     (quorum1Member : Quorum1 → Acceptor → Prop)
     {s t : State Acceptor Value}
-    (honeB : ∀ a b prior, s.oneB a b prior → t.oneB a b prior)
+    (honeB : ∀ a b prior,
+      s.messages.oneB a b prior → t.messages.oneB a b prior)
     {b v} (certificate : ProposalCertificate quorum1Member s b v) :
     ProposalCertificate quorum1Member t b v := by
   induction certificate with
@@ -226,18 +229,21 @@ theorem invariants_preserved
       intro ballot value hp
       exact certificate_mono quorum1Member
         (s := s)
-        (t := { s with oneA := fun b' => s.oneA b' ∨ b' = b })
+        (t := { s with messages := { s.messages with
+          oneA := fun b' => s.messages.oneA b' ∨ b' = b } })
         (fun _ _ _ h => h) (inv.proposalCertified ballot value hp)
   | phase1b actor newBallot action =>
       rcases action with ⟨request, higher, rfl⟩
       let t : State Acceptor Value :=
         { s with
           maxBal := update s.maxBal actor (some newBallot)
-          oneB := fun a' b' prior =>
-            s.oneB a' b' prior ∨
-              (a' = actor ∧ b' = newBallot ∧ prior = s.accepted actor) }
-      have oldToNew : ∀ x ballot prior, s.oneB x ballot prior →
-          t.oneB x ballot prior := fun _ _ _ h => Or.inl h
+          messages := { s.messages with
+            oneB := fun a' b' prior =>
+              s.messages.oneB a' b' prior ∨
+                (a' = actor ∧ b' = newBallot ∧
+                  prior = s.accepted actor) } }
+      have oldToNew : ∀ x ballot prior, s.messages.oneB x ballot prior →
+          t.messages.oneB x ballot prior := fun _ _ _ h => Or.inl h
       have accepted_lt :
           ∀ previous value, s.accepted actor = some (previous, value) →
             previous < newBallot := by
@@ -325,8 +331,10 @@ theorem invariants_preserved
         · exact certificate_mono quorum1Member
             (s := s)
             (t := { s with
-              twoA := fun b' v' =>
-                s.twoA b' v' ∨ (b' = newBallot ∧ v' = newValue) })
+              messages := { s.messages with
+                twoA := fun b' v' =>
+                  s.messages.twoA b' v' ∨
+                    (b' = newBallot ∧ v' = newValue) } })
             (fun _ _ _ h => h)
             (inv.proposalCertified ballot value hp)
         · rcases safeChoice with noPrevious | selected
@@ -344,11 +352,11 @@ theorem invariants_preserved
               inv.voteHasProposal x previous value vote
             let report :
                 Acceptor → Option (Ballot × Value) → Prop :=
-              fun acceptor prior => s.oneB acceptor ballot prior
+              fun acceptor prior => s.messages.oneB acceptor ballot prior
             have report_response :
                 ∀ acceptor, quorum1Member q acceptor →
                   ∃ prior, report acceptor prior ∧
-                    s.oneB acceptor ballot prior := by
+                    s.messages.oneB acceptor ballot prior := by
               intro acceptor member
               obtain ⟨prior, hp⟩ := responses acceptor member
               exact ⟨prior, hp, hp⟩
@@ -364,8 +372,10 @@ theorem invariants_preserved
               (certificate_mono quorum1Member
                 (s := s)
                 (t := { s with
-                  twoA := fun b' v' =>
-                    s.twoA b' v' ∨ (b' = ballot ∧ v' = value) })
+                  messages := { s.messages with
+                    twoA := fun b' v' =>
+                      s.messages.twoA b' v' ∨
+                        (b' = ballot ∧ v' = value) } })
                 (fun _ _ _ h => h)
                 (inv.proposalCertified previous value proposal))
   | phase2b actor newBallot newValue action =>
@@ -374,9 +384,10 @@ theorem invariants_preserved
         { s with
           maxBal := update s.maxBal actor (some newBallot)
           accepted := update s.accepted actor (some (newBallot, newValue))
-          twoB := fun a' b' v' =>
-            s.twoB a' b' v' ∨
-              (a' = actor ∧ b' = newBallot ∧ v' = newValue) }
+          messages := { s.messages with
+            twoB := fun a' b' v' =>
+              s.messages.twoB a' b' v' ∨
+                (a' = actor ∧ b' = newBallot ∧ v' = newValue) } }
       refine {
         proposalUnique := inv.proposalUnique
         voteHasProposal := ?_
@@ -455,9 +466,10 @@ theorem invariants_preserved
           (t := { s with
             maxBal := update s.maxBal actor (some newBallot)
             accepted := update s.accepted actor (some (newBallot, newValue))
-            twoB := fun a' b' v' =>
-              s.twoB a' b' v' ∨
-                (a' = actor ∧ b' = newBallot ∧ v' = newValue) })
+            messages := { s.messages with
+              twoB := fun a' b' v' =>
+                s.messages.twoB a' b' v' ∨
+                  (a' = actor ∧ b' = newBallot ∧ v' = newValue) } })
           (fun _ _ _ h => h) (inv.proposalCertified ballot value hp)
 
 theorem reachable_invariants
