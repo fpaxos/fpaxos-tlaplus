@@ -9,8 +9,6 @@ predicates represent sets, and `none` replaces `-1`.
 
 namespace FPaxos
 
-universe uA uV uQ1 uQ2
-
 /-- TLA+ ballot numbers (lines 14--15). -/
 abbrev Ballot := Int
 
@@ -18,7 +16,7 @@ abbrev Ballot := Int
 The `1aMsgs`, `1bMsgs`, `2aMsgs`, and `2bMsgs` sets (lines 29--36), grouped
 as in the TLA+ `msgs` tuple (line 38).
 -/
-structure Messages (Acceptor : Type uA) (Value : Type uV) where
+structure Messages (Acceptor Value : Type) where
   oneA : Ballot → Prop
   oneB : Acceptor → Ballot → Option (Ballot × Value) → Prop
   twoA : Ballot → Value → Prop
@@ -28,13 +26,12 @@ structure Messages (Acceptor : Type uA) (Value : Type uV) where
 The TLA+ `vars` tuple (lines 22--39). `accepted` combines `maxVBal` and
 `maxVal`, preserving their reachable-state pairing by construction.
 -/
-structure State (Acceptor : Type uA) (Value : Type uV) where
+structure State (Acceptor Value : Type) where
   maxBal : Acceptor → Option Ballot
   accepted : Acceptor → Option (Ballot × Value)
   messages : Messages Acceptor Value
 
-variable {Acceptor : Type uA} {Value : Type uV}
-variable {Quorum1 : Type uQ1} {Quorum2 : Type uQ2}
+variable {Acceptor Value Quorum1 Quorum2 : Type}
 variable [DecidableEq Acceptor]
 
 /--

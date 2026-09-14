@@ -2,10 +2,7 @@ import FPaxos
 
 namespace FPaxos
 
-universe uA uV uQ1 uQ2
-
-variable {Acceptor : Type uA} {Value : Type uV}
-variable {Quorum1 : Type uQ1} {Quorum2 : Type uQ2}
+variable {Acceptor Value Quorum1 Quorum2 : Type}
 variable [DecidableEq Acceptor]
 
 def ProposalUnique (s : State Acceptor Value) : Prop :=
