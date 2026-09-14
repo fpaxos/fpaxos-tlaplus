@@ -1,22 +1,23 @@
 import Std
 
 /-!
-A pure Lean translation of the state machine and safety properties in
-`FPaxos.tla`.
-
-TLA+ sets are represented by predicates. The `-1` sentinel used for an
-acceptor with no promise or vote is represented by `Option.none`, keeping
-ballots and values intrinsically well-typed.
+A pure Lean translation of `FPaxos.tla`. Type parameters and membership
+predicates represent the TLA+ constants (lines 5--15); quorum intersection
+(lines 17--20) is assumed by the theorems in `Proof.lean`. Lean types enforce
+`TypeOK` (lines 41--48), predicates represent sets, and `none` replaces `-1`.
 -/
 
 namespace FPaxos
 
 universe uA uV uQ1 uQ2
 
-/-- Ballot numbers are the integers used by the TLA+ specification. -/
+/-- TLA+ ballot numbers (lines 14--15). -/
 abbrev Ballot := Int
 
-/-- The append-only message sets from `FPaxos.tla`, as characteristic predicates. -/
+/--
+The `1aMsgs`, `1bMsgs`, `2aMsgs`, and `2bMsgs` sets (lines 29--36), grouped
+as in the TLA+ `msgs` tuple (line 38).
+-/
 structure Messages (Acceptor : Type uA) (Value : Type uV) where
   oneA : Ballot → Prop
   oneB : Acceptor → Ballot → Option (Ballot × Value) → Prop
@@ -24,11 +25,8 @@ structure Messages (Acceptor : Type uA) (Value : Type uV) where
   twoB : Acceptor → Ballot → Value → Prop
 
 /--
-The mutable variables from `FPaxos.tla`.
-
-`maxBal = none` represents no promise, while `accepted = none` represents the
-paired `maxVBal = maxVal = -1` case. Pairing an accepted ballot with its value
-rules out unreachable states where only one of the two TLA+ fields is `-1`.
+The TLA+ `vars` tuple (lines 22--39). `accepted` combines `maxVBal` and
+`maxVal`, preserving their reachable-state pairing by construction.
 -/
 structure State (Acceptor : Type uA) (Value : Type uV) where
   maxBal : Acceptor → Option Ballot
@@ -39,10 +37,16 @@ variable {Acceptor : Type uA} {Value : Type uV}
 variable {Quorum1 : Type uQ1} {Quorum2 : Type uQ2}
 variable [DecidableEq Acceptor]
 
+/--
+Functional form of TLA+ `[f EXCEPT ![key] = value]` (for example, line 67).
+-/
 def update (f : Acceptor → α) (key : Acceptor) (value : α) : Acceptor → α :=
   fun a => if a = key then value else f a
 
-/-- The TLA+ `Init` predicate: no acceptor state and no messages. -/
+/--
+The TLA+ `Init` predicate (lines 50--57), with `none` for `-1` and false
+membership predicates for empty sets.
+-/
 def Init (s : State Acceptor Value) : Prop :=
   (∀ a, s.maxBal a = none) ∧
   (∀ a, s.accepted a = none) ∧
@@ -51,12 +55,17 @@ def Init (s : State Acceptor Value) : Prop :=
   (∀ b v, ¬s.messages.twoA b v) ∧
   (∀ a b v, ¬s.messages.twoB a b v)
 
-/-- A proposer broadcasts a phase-one request for `b`. -/
+/--
+TLA+ `Phase1a(b)` (lines 59--61); predicate disjunction implements set union.
+-/
 def Phase1a (b : Ballot) (s s' : State Acceptor Value) : Prop :=
   s' = { s with messages := {
     s.messages with oneA := fun b' => s.messages.oneA b' ∨ b' = b } }
 
-/-- An acceptor promises a higher ballot and reports its previous vote. -/
+/--
+TLA+ `Phase1b(a)` (lines 63--68), with the selected request ballot explicit
+as `b` and its `mbal`/`mval` fields paired in `accepted`.
+-/
 def Phase1b (a : Acceptor) (b : Ballot)
     (s s' : State Acceptor Value) : Prop :=
   s.messages.oneA b ∧
@@ -70,8 +79,8 @@ def Phase1b (a : Acceptor) (b : Ballot)
             (a' = a ∧ b' = b ∧ prior = s.accepted a) } }
 
 /--
-A proposer chooses a value after collecting a phase-one quorum. If any
-response contains a vote, the value must come from a highest such ballot.
+TLA+ `Phase2a(b, v)` (lines 70--82), with the selected phase-one quorum
+explicit as `q`.
 -/
 def Phase2a (quorum1Member : Quorum1 → Acceptor → Prop)
     (b : Ballot) (v : Value) (q : Quorum1)
@@ -87,7 +96,10 @@ def Phase2a (quorum1Member : Quorum1 → Acceptor → Prop)
   s' = { s with messages := { s.messages with
     twoA := fun b' v' => s.messages.twoA b' v' ∨ (b' = b ∧ v' = v) } }
 
-/-- An acceptor votes for a proposal that is not below its current promise. -/
+/--
+TLA+ `Phase2b(a)` (lines 84--91), with the selected proposal explicit as
+`b` and `v`.
+-/
 def Phase2b (a : Acceptor) (b : Ballot) (v : Value)
     (s s' : State Acceptor Value) : Prop :=
   s.messages.twoA b v ∧
@@ -101,7 +113,10 @@ def Phase2b (a : Acceptor) (b : Ballot) (v : Value)
           s.messages.twoB a' b' v' ∨
             (a' = a ∧ b' = b ∧ v' = v) } }
 
-/-- The TLA+ `Next` relation: one of the four protocol actions occurs. -/
+/--
+The non-stuttering part of TLA+ `Next` (lines 93--96); constructor parameters
+make its existential choices explicit.
+-/
 inductive Step
     (quorum1Member : Quorum1 → Acceptor → Prop) :
     State Acceptor Value → State Acceptor Value → Prop
@@ -113,7 +128,10 @@ inductive Step
   | phase2b (a : Acceptor) (b : Ballot) (v : Value) :
       Phase2b a b v s s' → Step quorum1Member s s'
 
-/-- States obtained from `Init` by finitely many `Step`s. -/
+/--
+Finite reachability for TLA+ `Spec` (line 98). Stuttering is omitted because
+it adds no reachable states.
+-/
 inductive Reachable
     (quorum1Member : Quorum1 → Acceptor → Prop) :
     State Acceptor Value → Prop
@@ -123,27 +141,38 @@ inductive Reachable
       Step quorum1Member s s' →
       Reachable quorum1Member s'
 
+/--
+TLA+ `Agreed(v, b)` (lines 111--113), with `Sent2b` (lines 100--104) inlined.
+-/
 def Agreed
     (quorum2Member : Quorum2 → Acceptor → Prop)
     (s : State Acceptor Value) (v : Value) (b : Ballot) : Prop :=
   ∃ q, ∀ a, quorum2Member q a → s.messages.twoB a b v
 
-/-- The literal TLA+ `NoFutureProposal` predicate (lines 118--120). -/
+/--
+TLA+ `NoFutureProposal(v, b)` (lines 118--120), with `Sent2a`
+(lines 106--109) inlined.
+-/
 def NoFutureProposal
     (s : State Acceptor Value) (v : Value) (b : Ballot) : Prop :=
   ∀ v₂ b₂, b < b₂ → s.messages.twoA b₂ v₂ → v = v₂
 
-/-- The literal TLA+ `SafeValue` predicate (lines 122--124). -/
+/-- TLA+ `SafeValue` (lines 122--124), stated as a property of one state. -/
 def SafeValue
     (quorum2Member : Quorum2 → Acceptor → Prop)
     (s : State Acceptor Value) : Prop :=
   ∀ v b, Agreed quorum2Member s v b → NoFutureProposal s v b
 
+/-- TLA+ `Decided(v)` (lines 115--116). -/
 def Decided
     (quorum2Member : Quorum2 → Acceptor → Prop)
     (s : State Acceptor Value) (v : Value) : Prop :=
   ∀ b, Agreed quorum2Member s v b
 
+/--
+TLA+ `Safety` (line 126), with cardinality at most one expressed as pairwise
+equality.
+-/
 def Safety
     (quorum2Member : Quorum2 → Acceptor → Prop)
     (s : State Acceptor Value) : Prop :=
