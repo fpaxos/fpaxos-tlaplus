@@ -36,8 +36,8 @@ quorum intersects every phase-two quorum. As in the concrete TLC models, the
 proof of agreement also assumes that the phase-one quorum family is nonempty.
 Lean's types encode a well-typed refinement of `TypeOK` by construction; in
 particular, an accepted ballot and its value are present or absent together.
-Ballots carry a reflexive, transitive, antisymmetric, total order, matching
-their integer ordering in TLA+.
+Ballots are represented directly as integers, matching their representation
+and ordering in TLA+.
 
 The proof covers the literal TLA+ `NoFutureProposal`, `SafeValue`, and
 `Safety` definitions.

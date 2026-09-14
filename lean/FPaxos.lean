@@ -11,7 +11,10 @@ ballots and values intrinsically well-typed.
 
 namespace FPaxos
 
-universe uA uB uV uQ1 uQ2
+universe uA uV uQ1 uQ2
+
+/-- Ballot numbers are the integers used by the TLA+ specification. -/
+abbrev Ballot := Int
 
 /--
 The mutable variables from `FPaxos.tla`.
@@ -21,7 +24,7 @@ promise, while `accepted = none` represents the paired `maxVBal = maxVal = -1`
 case. Pairing an accepted ballot with its value rules out unreachable states
 where only one of the two TLA+ fields is `-1`.
 -/
-structure State (Acceptor : Type uA) (Ballot : Type uB) (Value : Type uV) where
+structure State (Acceptor : Type uA) (Value : Type uV) where
   maxBal : Acceptor → Option Ballot
   accepted : Acceptor → Option (Ballot × Value)
   oneA : Ballot → Prop
@@ -29,22 +32,15 @@ structure State (Acceptor : Type uA) (Ballot : Type uB) (Value : Type uV) where
   twoA : Ballot → Value → Prop
   twoB : Acceptor → Ballot → Value → Prop
 
-/-- The order inherited from integers by the TLA+ `Ballot` set. -/
-class BallotOrder (Ballot : Type uB) extends LE Ballot where
-  le_refl : ∀ b : Ballot, b ≤ b
-  le_trans : ∀ {b₁ b₂ b₃ : Ballot}, b₁ ≤ b₂ → b₂ ≤ b₃ → b₁ ≤ b₃
-  le_antisymm : ∀ {b₁ b₂ : Ballot}, b₁ ≤ b₂ → b₂ ≤ b₁ → b₁ = b₂
-  le_total : ∀ b₁ b₂ : Ballot, b₁ ≤ b₂ ∨ b₂ ≤ b₁
-
-variable {Acceptor : Type uA} {Ballot : Type uB} {Value : Type uV}
+variable {Acceptor : Type uA} {Value : Type uV}
 variable {Quorum1 : Type uQ1} {Quorum2 : Type uQ2}
-variable [DecidableEq Acceptor] [BallotOrder Ballot]
+variable [DecidableEq Acceptor]
 
 def update (f : Acceptor → α) (key : Acceptor) (value : α) : Acceptor → α :=
   fun a => if a = key then value else f a
 
 /-- The TLA+ `Init` predicate: no acceptor state and no messages. -/
-def Init (s : State Acceptor Ballot Value) : Prop :=
+def Init (s : State Acceptor Value) : Prop :=
   (∀ a, s.maxBal a = none) ∧
   (∀ a, s.accepted a = none) ∧
   (∀ b, ¬s.oneA b) ∧
@@ -53,14 +49,14 @@ def Init (s : State Acceptor Ballot Value) : Prop :=
   (∀ a b v, ¬s.twoB a b v)
 
 /-- A proposer broadcasts a phase-one request for `b`. -/
-def Phase1a (b : Ballot) (s s' : State Acceptor Ballot Value) : Prop :=
+def Phase1a (b : Ballot) (s s' : State Acceptor Value) : Prop :=
   s' = { s with oneA := fun b' => s.oneA b' ∨ b' = b }
 
 /-- An acceptor promises a higher ballot and reports its previous vote. -/
 def Phase1b (a : Acceptor) (b : Ballot)
-    (s s' : State Acceptor Ballot Value) : Prop :=
+    (s s' : State Acceptor Value) : Prop :=
   s.oneA b ∧
-  (∀ old, s.maxBal a = some old → old ≤ b ∧ old ≠ b) ∧
+  (∀ old, s.maxBal a = some old → old < b) ∧
   s' =
     { s with
       maxBal := update s.maxBal a (some b)
@@ -74,7 +70,7 @@ response contains a vote, the value must come from a highest such ballot.
 -/
 def Phase2a (quorum1Member : Quorum1 → Acceptor → Prop)
     (b : Ballot) (v : Value) (q : Quorum1)
-    (s s' : State Acceptor Ballot Value) : Prop :=
+    (s s' : State Acceptor Value) : Prop :=
   (∀ old, ¬s.twoA b old) ∧
   (∀ a, quorum1Member q a → ∃ prior, s.oneB a b prior) ∧
   ((∀ a prior, quorum1Member q a → ¬s.oneB a b (some prior)) ∨
@@ -86,7 +82,7 @@ def Phase2a (quorum1Member : Quorum1 → Acceptor → Prop)
 
 /-- An acceptor votes for a proposal that is not below its current promise. -/
 def Phase2b (a : Acceptor) (b : Ballot) (v : Value)
-    (s s' : State Acceptor Ballot Value) : Prop :=
+    (s s' : State Acceptor Value) : Prop :=
   s.twoA b v ∧
   (∀ old, s.maxBal a = some old → old ≤ b) ∧
   s' =
@@ -99,7 +95,7 @@ def Phase2b (a : Acceptor) (b : Ballot) (v : Value)
 /-- The TLA+ `Next` relation: one of the four protocol actions occurs. -/
 inductive Step
     (quorum1Member : Quorum1 → Acceptor → Prop) :
-    State Acceptor Ballot Value → State Acceptor Ballot Value → Prop
+    State Acceptor Value → State Acceptor Value → Prop
   | phase1a (b : Ballot) : Phase1a b s s' → Step quorum1Member s s'
   | phase1b (a : Acceptor) (b : Ballot) :
       Phase1b a b s s' → Step quorum1Member s s'
@@ -108,33 +104,40 @@ inductive Step
   | phase2b (a : Acceptor) (b : Ballot) (v : Value) :
       Phase2b a b v s s' → Step quorum1Member s s'
 
-def BallotLT (b₁ b₂ : Ballot) : Prop :=
-  b₁ ≤ b₂ ∧ b₁ ≠ b₂
+/-- States obtained from `Init` by finitely many `Step`s. -/
+inductive Reachable
+    (quorum1Member : Quorum1 → Acceptor → Prop) :
+    State Acceptor Value → Prop
+  | init {s} : Init s → Reachable quorum1Member s
+  | step {s s'} :
+      Reachable quorum1Member s →
+      Step quorum1Member s s' →
+      Reachable quorum1Member s'
 
 def Agreed
     (quorum2Member : Quorum2 → Acceptor → Prop)
-    (s : State Acceptor Ballot Value) (v : Value) (b : Ballot) : Prop :=
+    (s : State Acceptor Value) (v : Value) (b : Ballot) : Prop :=
   ∃ q, ∀ a, quorum2Member q a → s.twoB a b v
 
 /-- The literal TLA+ `NoFutureProposal` predicate (lines 118--120). -/
 def NoFutureProposal
-    (s : State Acceptor Ballot Value) (v : Value) (b : Ballot) : Prop :=
-  ∀ v₂ b₂, BallotLT b b₂ → s.twoA b₂ v₂ → v = v₂
+    (s : State Acceptor Value) (v : Value) (b : Ballot) : Prop :=
+  ∀ v₂ b₂, b < b₂ → s.twoA b₂ v₂ → v = v₂
 
 /-- The literal TLA+ `SafeValue` predicate (lines 122--124). -/
 def SafeValue
     (quorum2Member : Quorum2 → Acceptor → Prop)
-    (s : State Acceptor Ballot Value) : Prop :=
+    (s : State Acceptor Value) : Prop :=
   ∀ v b, Agreed quorum2Member s v b → NoFutureProposal s v b
 
 def Decided
     (quorum2Member : Quorum2 → Acceptor → Prop)
-    (s : State Acceptor Ballot Value) (v : Value) : Prop :=
+    (s : State Acceptor Value) (v : Value) : Prop :=
   ∀ b, Agreed quorum2Member s v b
 
 def Safety
     (quorum2Member : Quorum2 → Acceptor → Prop)
-    (s : State Acceptor Ballot Value) : Prop :=
+    (s : State Acceptor Value) : Prop :=
   ∀ v₁ v₂,
     Decided quorum2Member s v₁ →
     Decided quorum2Member s v₂ →

@@ -2,48 +2,48 @@ import FPaxos
 
 namespace FPaxos
 
-universe uA uB uV uQ1 uQ2
+universe uA uV uQ1 uQ2
 
-variable {Acceptor : Type uA} {Ballot : Type uB} {Value : Type uV}
+variable {Acceptor : Type uA} {Value : Type uV}
 variable {Quorum1 : Type uQ1} {Quorum2 : Type uQ2}
-variable [DecidableEq Acceptor] [BallotOrder Ballot]
+variable [DecidableEq Acceptor]
 
-def ProposalUnique (s : State Acceptor Ballot Value) : Prop :=
+def ProposalUnique (s : State Acceptor Value) : Prop :=
   ∀ b v₁ v₂, s.twoA b v₁ → s.twoA b v₂ → v₁ = v₂
 
-def VoteHasProposal (s : State Acceptor Ballot Value) : Prop :=
+def VoteHasProposal (s : State Acceptor Value) : Prop :=
   ∀ a b v, s.twoB a b v → s.twoA b v
 
-def MaxBalCoversOneB (s : State Acceptor Ballot Value) : Prop :=
+def MaxBalCoversOneB (s : State Acceptor Value) : Prop :=
   ∀ a b prior, s.oneB a b prior →
     ∃ current, s.maxBal a = some current ∧ b ≤ current
 
-def AcceptedCoversVotes (s : State Acceptor Ballot Value) : Prop :=
+def AcceptedCoversVotes (s : State Acceptor Value) : Prop :=
   ∀ a b v, s.twoB a b v →
     ∃ current value, s.accepted a = some (current, value) ∧ b ≤ current
 
-def AcceptedHasVote (s : State Acceptor Ballot Value) : Prop :=
+def AcceptedHasVote (s : State Acceptor Value) : Prop :=
   ∀ a b v, s.accepted a = some (b, v) → s.twoB a b v
 
-def AcceptedBelowMaxBal (s : State Acceptor Ballot Value) : Prop :=
+def AcceptedBelowMaxBal (s : State Acceptor Value) : Prop :=
   ∀ a b v, s.accepted a = some (b, v) →
     ∃ current, s.maxBal a = some current ∧ b ≤ current
 
-def OneBHasVote (s : State Acceptor Ballot Value) : Prop :=
+def OneBHasVote (s : State Acceptor Value) : Prop :=
   ∀ a b previous v, s.oneB a b (some (previous, v)) →
     s.twoB a previous v
 
-def OneBPreviousBelow (s : State Acceptor Ballot Value) : Prop :=
+def OneBPreviousBelow (s : State Acceptor Value) : Prop :=
   ∀ a b previous v, s.oneB a b (some (previous, v)) →
-    BallotLT previous b
+    previous < b
 
 /--
 A phase-one response remembers enough of the acceptor's history to account for
 every lower vote, including votes inspected after the response was sent.
 -/
-def OneBCoversLowerVotes (s : State Acceptor Ballot Value) : Prop :=
+def OneBCoversLowerVotes (s : State Acceptor Value) : Prop :=
   ∀ a b prior voted value, s.oneB a b prior → s.twoB a voted value →
-    BallotLT voted b →
+    voted < b →
     ∃ previous previousValue,
       prior = some (previous, previousValue) ∧ voted ≤ previous
 
@@ -54,7 +54,7 @@ ballot order is well-founded.
 -/
 inductive ProposalCertificate
     (quorum1Member : Quorum1 → Acceptor → Prop)
-    (s : State Acceptor Ballot Value) : Ballot → Value → Prop
+    (s : State Acceptor Value) : Ballot → Value → Prop
   | noPrevious (b v : _) (q : Quorum1)
       (responses : ∀ a, quorum1Member q a → s.oneB a b none) :
       ProposalCertificate quorum1Member s b v
@@ -67,14 +67,14 @@ inductive ProposalCertificate
         s.oneB a b (some (previous, v)))
       (greatest : ∀ a previous' v', quorum1Member q a →
         report a (some (previous', v')) → previous' ≤ previous)
-      (previousBelow : BallotLT previous b)
+      (previousBelow : previous < b)
       (parent : ProposalCertificate quorum1Member s previous v) :
       ProposalCertificate quorum1Member s b v
 
 /-- The inductive protocol and history facts used by the safety proofs. -/
 structure Invariants
     (quorum1Member : Quorum1 → Acceptor → Prop)
-    (s : State Acceptor Ballot Value) : Prop where
+    (s : State Acceptor Value) : Prop where
   proposalUnique : ProposalUnique s
   voteHasProposal : VoteHasProposal s
   maxBalCoversOneB : MaxBalCoversOneB s
@@ -87,38 +87,16 @@ structure Invariants
   proposalCertified : ∀ b v, s.twoA b v →
     ProposalCertificate quorum1Member s b v
 
-/-- States obtained from `Init` by finitely many `Step`s. -/
-inductive Reachable
-    (quorum1Member : Quorum1 → Acceptor → Prop) :
-    State Acceptor Ballot Value → Prop
-  | init {s} : Init s → Reachable quorum1Member s
-  | step {s s'} :
-      Reachable quorum1Member s →
-      Step quorum1Member s s' →
-      Reachable quorum1Member s'
-
-def OneVotePerAcceptorPerBallot (s : State Acceptor Ballot Value) : Prop :=
+def OneVotePerAcceptorPerBallot (s : State Acceptor Value) : Prop :=
   ∀ a b v₁ v₂, s.twoB a b v₁ → s.twoB a b v₂ → v₁ = v₂
 
 def OneValueAgreedPerBallot
     (quorum2Member : Quorum2 → Acceptor → Prop)
-    (s : State Acceptor Ballot Value) : Prop :=
+    (s : State Acceptor Value) : Prop :=
   ∀ b v₁ v₂,
     Agreed quorum2Member s v₁ b →
     Agreed quorum2Member s v₂ b →
     v₁ = v₂
-
-private theorem lt_of_le_of_lt {a b c : Ballot}
-    (hab : a ≤ b) (hbc : BallotLT b c) : BallotLT a c := by
-  refine ⟨BallotOrder.le_trans hab hbc.1, ?_⟩
-  intro hac
-  subst c
-  exact hbc.2 (BallotOrder.le_antisymm hbc.1 hab)
-
-private theorem not_lt_of_le {a b : Ballot}
-    (hab : a ≤ b) : ¬BallotLT b a := by
-  intro h
-  exact h.2 (BallotOrder.le_antisymm h.1 hab)
 
 theorem init_proposalUnique (h : Init s) : ProposalUnique s := by
   intro b v₁ v₂ h₁
@@ -130,7 +108,7 @@ theorem init_voteHasProposal (h : Init s) : VoteHasProposal s := by
 
 theorem proposalUnique_preserved
     (quorum1Member : Quorum1 → Acceptor → Prop)
-    (s s' : State Acceptor Ballot Value)
+    (s s' : State Acceptor Value)
     (hinv : ProposalUnique s)
     (step : Step quorum1Member s s') :
     ProposalUnique s' := by
@@ -158,7 +136,7 @@ theorem proposalUnique_preserved
 
 theorem voteHasProposal_preserved
     (quorum1Member : Quorum1 → Acceptor → Prop)
-    (s s' : State Acceptor Ballot Value)
+    (s s' : State Acceptor Value)
     (hinv : VoteHasProposal s)
     (step : Step quorum1Member s s') :
     VoteHasProposal s' := by
@@ -183,7 +161,7 @@ theorem voteHasProposal_preserved
 omit [DecidableEq Acceptor] in
 theorem init_invariants
     (quorum1Member : Quorum1 → Acceptor → Prop)
-    (s : State Acceptor Ballot Value) (h : Init s) :
+    (s : State Acceptor Value) (h : Init s) :
     Invariants quorum1Member s where
   proposalUnique := init_proposalUnique h
   voteHasProposal := init_voteHasProposal h
@@ -219,7 +197,7 @@ theorem init_invariants
 omit [DecidableEq Acceptor] in
 private theorem certificate_mono
     (quorum1Member : Quorum1 → Acceptor → Prop)
-    {s t : State Acceptor Ballot Value}
+    {s t : State Acceptor Value}
     (honeB : ∀ a b prior, s.oneB a b prior → t.oneB a b prior)
     {b v} (certificate : ProposalCertificate quorum1Member s b v) :
     ProposalCertificate quorum1Member t b v := by
@@ -237,7 +215,7 @@ private theorem certificate_mono
 
 theorem invariants_preserved
     (quorum1Member : Quorum1 → Acceptor → Prop)
-    (s s' : State Acceptor Ballot Value)
+    (s s' : State Acceptor Value)
     (inv : Invariants quorum1Member s)
     (step : Step quorum1Member s s') :
     Invariants quorum1Member s' := by
@@ -252,7 +230,7 @@ theorem invariants_preserved
         (fun _ _ _ h => h) (inv.proposalCertified ballot value hp)
   | phase1b actor newBallot action =>
       rcases action with ⟨request, higher, rfl⟩
-      let t : State Acceptor Ballot Value :=
+      let t : State Acceptor Value :=
         { s with
           maxBal := update s.maxBal actor (some newBallot)
           oneB := fun a' b' prior =>
@@ -262,12 +240,12 @@ theorem invariants_preserved
           t.oneB x ballot prior := fun _ _ _ h => Or.inl h
       have accepted_lt :
           ∀ previous value, s.accepted actor = some (previous, value) →
-            BallotLT previous newBallot := by
+            previous < newBallot := by
         intro previous value haccepted
         obtain ⟨current, hcurrent, hpc⟩ :=
           inv.acceptedBelowMaxBal actor previous value haccepted
         have hc := higher current hcurrent
-        exact lt_of_le_of_lt hpc hc
+        exact Int.lt_of_le_of_lt hpc hc
       refine {
         proposalUnique := inv.proposalUnique
         voteHasProposal := inv.voteHasProposal
@@ -287,10 +265,10 @@ theorem invariants_preserved
           · subst x
             have hlt := higher current hc
             exact ⟨newBallot, by simp [update],
-              BallotOrder.le_trans hle hlt.1⟩
+              Int.le_trans hle (Int.le_of_lt hlt)⟩
           · exact ⟨current, by simpa [update, hxa] using hc, hle⟩
         · exact ⟨ballot, by simp [update],
-            BallotOrder.le_refl ballot⟩
+            Int.le_refl ballot⟩
       · intro x previous value haccepted
         obtain ⟨current, hc, hle⟩ :=
           inv.acceptedBelowMaxBal x previous value haccepted
@@ -298,7 +276,7 @@ theorem invariants_preserved
         · subst x
           have hlt := higher current hc
           exact ⟨newBallot, by simp [update],
-            BallotOrder.le_trans hle hlt.1⟩
+            Int.le_trans hle (Int.le_of_lt hlt)⟩
         · exact ⟨current, by simpa [update, hxa] using hc, hle⟩
       · intro x ballot previous value hb
         rcases hb with hb | ⟨rfl, rfl, hp⟩
@@ -392,7 +370,7 @@ theorem invariants_preserved
                 (inv.proposalCertified previous value proposal))
   | phase2b actor newBallot newValue action =>
       rcases action with ⟨proposal, notBelowPromise, rfl⟩
-      let t : State Acceptor Ballot Value :=
+      let t : State Acceptor Value :=
         { s with
           maxBal := update s.maxBal actor (some newBallot)
           accepted := update s.accepted actor (some (newBallot, newValue))
@@ -421,7 +399,7 @@ theorem invariants_preserved
         · subst x
           have hcb := notBelowPromise current hc
           exact ⟨newBallot, by simp [update],
-            BallotOrder.le_trans hle hcb⟩
+            Int.le_trans hle hcb⟩
         · exact ⟨current, by simpa [update, hxa] using hc, hle⟩
       · intro x voted value hv
         rcases hv with hv | ⟨rfl, rfl, rfl⟩
@@ -433,11 +411,11 @@ theorem invariants_preserved
               inv.acceptedBelowMaxBal actor current currentValue haccepted
             have hpb := notBelowPromise promised hpromised
             exact ⟨newBallot, newValue, by simp [update],
-              BallotOrder.le_trans hle (BallotOrder.le_trans hcp hpb)⟩
+              Int.le_trans hle (Int.le_trans hcp hpb)⟩
           · exact ⟨current, currentValue,
               by simpa [update, hxa] using haccepted, hle⟩
         · exact ⟨voted, value, by simp [update],
-            BallotOrder.le_refl voted⟩
+            Int.le_refl voted⟩
       · intro x voted value haccepted
         by_cases hxa : x = actor
         · subst x
@@ -455,7 +433,7 @@ theorem invariants_preserved
             simpa [update] using haccepted
           cases pairEq
           exact ⟨newBallot, by simp [update],
-            BallotOrder.le_refl newBallot⟩
+            Int.le_refl newBallot⟩
         · obtain ⟨current, hc, hle⟩ :=
             inv.acceptedBelowMaxBal x voted value
               (by simpa [update, hxa] using haccepted)
@@ -470,7 +448,7 @@ theorem invariants_preserved
             inv.maxBalCoversOneB x promise prior response
           have hcb := notBelowPromise current hc
           exact False.elim
-            (not_lt_of_le (BallotOrder.le_trans hle hcb) hlt)
+            (Int.not_lt_of_ge (Int.le_trans hle hcb) hlt)
       · intro ballot value hp
         exact certificate_mono quorum1Member
           (s := s)
@@ -484,7 +462,7 @@ theorem invariants_preserved
 
 theorem reachable_invariants
     (quorum1Member : Quorum1 → Acceptor → Prop)
-    (s : State Acceptor Ballot Value)
+    (s : State Acceptor Value)
     (reachable : Reachable quorum1Member s) :
     Invariants quorum1Member s := by
   induction reachable with
@@ -503,7 +481,7 @@ private theorem certificate_safe
     (certificate : ProposalCertificate quorum1Member s higher value) :
     ∀ {lower lowerValue},
       Agreed quorum2Member s lowerValue lower →
-      BallotLT lower higher →
+      lower < higher →
       lowerValue = value := by
   induction certificate with
   | noPrevious higher value q responses =>
@@ -528,7 +506,7 @@ private theorem certificate_safe
         simpa [hprior] using frozen
       have reportedLe :=
         greatest a reported reportedValue hq₁ reportedFrozen
-      have lowerLePrevious := BallotOrder.le_trans lowerLe reportedLe
+      have lowerLePrevious := Int.le_trans lowerLe reportedLe
       by_cases equal : lower = previous
       · subst previous
         obtain ⟨selectedAcceptor, _, _, selectedResponse⟩ := chosen
@@ -537,7 +515,9 @@ private theorem certificate_safe
           (inv.voteHasProposal selectedAcceptor lower value
             (inv.oneBHasVote selectedAcceptor higher lower value
               selectedResponse))
-      · exact ih agreedCopy ⟨lowerLePrevious, equal⟩
+      · rcases Int.lt_or_eq_of_le lowerLePrevious with lowerLt | rfl
+        · exact ih agreedCopy lowerLt
+        · contradiction
 
 omit [DecidableEq Acceptor] in
 theorem safeValue
@@ -545,7 +525,7 @@ theorem safeValue
     (quorum2Member : Quorum2 → Acceptor → Prop)
     (intersects : ∀ q₁ q₂, ∃ a,
       quorum1Member q₁ a ∧ quorum2Member q₂ a)
-    (s : State Acceptor Ballot Value)
+    (s : State Acceptor Value)
     (inv : Invariants quorum1Member s) :
     SafeValue quorum2Member s := by
   intro value ballot agreed futureValue futureBallot later proposal
@@ -557,7 +537,7 @@ theorem reachable_safeValue
     (quorum2Member : Quorum2 → Acceptor → Prop)
     (intersects : ∀ q₁ q₂, ∃ a,
       quorum1Member q₁ a ∧ quorum2Member q₂ a)
-    (s : State Acceptor Ballot Value)
+    (s : State Acceptor Value)
     (reachable : Reachable quorum1Member s) :
     SafeValue quorum2Member s :=
   safeValue quorum1Member quorum2Member intersects s
@@ -588,24 +568,22 @@ theorem oneValueAgreedPerBallot
     (hproposed a₁ b v₁ (hagreed₁ a₁ ha₁))
     (hproposed a₂ b v₂ (hagreed₂ a₂ ha₂))
 
-omit [DecidableEq Acceptor] [BallotOrder Ballot] in
+omit [DecidableEq Acceptor] in
 theorem safety
-    [Nonempty Ballot]
     (quorum2Member : Quorum2 → Acceptor → Prop)
-    (s : State Acceptor Ballot Value)
+    (s : State Acceptor Value)
     (hone : OneValueAgreedPerBallot quorum2Member s) :
     Safety quorum2Member s := by
   intro v₁ v₂ hdecided₁ hdecided₂
-  obtain ⟨b⟩ := (inferInstance : Nonempty Ballot)
-  exact hone b v₁ v₂ (hdecided₁ b) (hdecided₂ b)
+  exact hone 0 v₁ v₂ (hdecided₁ 0) (hdecided₂ 0)
 
 theorem reachable_safety
-    [Nonempty Ballot] [Nonempty Quorum1]
+    [Nonempty Quorum1]
     (quorum1Member : Quorum1 → Acceptor → Prop)
     (quorum2Member : Quorum2 → Acceptor → Prop)
     (intersects : ∀ q₁ q₂, ∃ a,
       quorum1Member q₁ a ∧ quorum2Member q₂ a)
-    (s : State Acceptor Ballot Value)
+    (s : State Acceptor Value)
     (reachable : Reachable quorum1Member s) :
     Safety quorum2Member s := by
   have inv := reachable_invariants quorum1Member s reachable
