@@ -3,8 +3,8 @@ import Std
 /-!
 A pure Lean translation of `FPaxos.tla`. Type parameters and membership
 predicates represent the TLA+ constants (lines 5--15); quorum intersection
-(lines 17--20) is assumed by the theorems in `Proof.lean`. Lean types enforce
-`TypeOK` (lines 41--48), predicates represent sets, and `none` replaces `-1`.
+(lines 17--20) is defined below. Lean types enforce `TypeOK` (lines 41--48),
+predicates represent sets, and `none` replaces `-1`.
 -/
 
 namespace FPaxos
@@ -36,6 +36,15 @@ structure State (Acceptor : Type uA) (Value : Type uV) where
 variable {Acceptor : Type uA} {Value : Type uV}
 variable {Quorum1 : Type uQ1} {Quorum2 : Type uQ2}
 variable [DecidableEq Acceptor]
+
+/--
+TLA+ `QuorumAssumption` (lines 17--20). Acceptor-typed membership enforces
+the two subset clauses, leaving the intersection clause explicit.
+-/
+def QuorumAssumption
+    (quorum1Member : Quorum1 → Acceptor → Prop)
+    (quorum2Member : Quorum2 → Acceptor → Prop) : Prop :=
+  ∀ q₁ q₂, ∃ a, quorum1Member q₁ a ∧ quorum2Member q₂ a
 
 /--
 Functional form of TLA+ `[f EXCEPT ![key] = value]` (for example, line 67).

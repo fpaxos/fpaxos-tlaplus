@@ -486,8 +486,7 @@ omit [DecidableEq Acceptor] in
 private theorem certificate_safe
     (quorum1Member : Quorum1 → Acceptor → Prop)
     (quorum2Member : Quorum2 → Acceptor → Prop)
-    (intersects : ∀ q₁ q₂, ∃ a,
-      quorum1Member q₁ a ∧ quorum2Member q₂ a)
+    (intersects : QuorumAssumption quorum1Member quorum2Member)
     (inv : Invariants quorum1Member s)
     {higher : Ballot} {value : Value}
     (certificate : ProposalCertificate quorum1Member s higher value) :
@@ -535,8 +534,7 @@ omit [DecidableEq Acceptor] in
 theorem safeValue
     (quorum1Member : Quorum1 → Acceptor → Prop)
     (quorum2Member : Quorum2 → Acceptor → Prop)
-    (intersects : ∀ q₁ q₂, ∃ a,
-      quorum1Member q₁ a ∧ quorum2Member q₂ a)
+    (intersects : QuorumAssumption quorum1Member quorum2Member)
     (s : State Acceptor Value)
     (inv : Invariants quorum1Member s) :
     SafeValue quorum2Member s := by
@@ -547,8 +545,7 @@ theorem safeValue
 theorem reachable_safeValue
     (quorum1Member : Quorum1 → Acceptor → Prop)
     (quorum2Member : Quorum2 → Acceptor → Prop)
-    (intersects : ∀ q₁ q₂, ∃ a,
-      quorum1Member q₁ a ∧ quorum2Member q₂ a)
+    (intersects : QuorumAssumption quorum1Member quorum2Member)
     (s : State Acceptor Value)
     (reachable : Reachable quorum1Member s) :
     SafeValue quorum2Member s :=
@@ -567,8 +564,7 @@ theorem oneValueAgreedPerBallot
     [Nonempty Quorum1]
     (quorum1Member : Quorum1 → Acceptor → Prop)
     (quorum2Member : Quorum2 → Acceptor → Prop)
-    (intersects : ∀ q₁ q₂, ∃ a,
-      quorum1Member q₁ a ∧ quorum2Member q₂ a)
+    (intersects : QuorumAssumption quorum1Member quorum2Member)
     (hunique : ProposalUnique s)
     (hproposed : VoteHasProposal s) :
     OneValueAgreedPerBallot quorum2Member s := by
@@ -593,8 +589,7 @@ theorem reachable_safety
     [Nonempty Quorum1]
     (quorum1Member : Quorum1 → Acceptor → Prop)
     (quorum2Member : Quorum2 → Acceptor → Prop)
-    (intersects : ∀ q₁ q₂, ∃ a,
-      quorum1Member q₁ a ∧ quorum2Member q₂ a)
+    (intersects : QuorumAssumption quorum1Member quorum2Member)
     (s : State Acceptor Value)
     (reachable : Reachable quorum1Member s) :
     Safety quorum2Member s := by
