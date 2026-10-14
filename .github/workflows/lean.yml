@@ -22,4 +22,5 @@ jobs:
           auto-config: false
           build: true
           leanchecker: true
+          leanchecker-args: FPaxos Proof
           axiom-audit: true
